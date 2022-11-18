@@ -1,8 +1,6 @@
 <?php
 namespace Avata;
 
-use Avata\AvataException;
-
 class Avata
 {
 
@@ -13,7 +11,14 @@ class Avata
         $this->config = $config;
     }
 
-    public function request($path, array $body = [], $method = 'GET')
+    /**
+     * @param string $path
+     * @param array $body
+     * @param string $method
+     * @return Response
+     * @throws AvataException
+     */
+    public function request(string $path, array $body = [], $method = 'GET')
     {
         $method = strtoupper($method);
         $url = rtrim($this->config->getDomain(), '/') . '/' . ltrim($path, '/');
@@ -32,6 +37,7 @@ class Avata
                 break;
             case 'POST':
                 curl_setopt($ch, CURLOPT_POST, 1);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
                 if($body){
                     foreach ($body as $key => $value) {
                         $param['body_' . $key] = $value;
@@ -40,6 +46,7 @@ class Avata
                 break;
             case 'PATCH':
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
                 if($body){
                     foreach ($body as $key => $value) {
                         $param['body_' . $key] = $value;
@@ -48,6 +55,7 @@ class Avata
                 break;
             case 'PUT':
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
                 if($body){
                     foreach ($body as $key => $value) {
                         $param['body_' . $key] = $value;
@@ -56,6 +64,7 @@ class Avata
                 break;
             case 'DELETE':
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
                 if($body){
                     foreach ($body as $key => $value) {
                         $param['body_' . $key] = $value;
@@ -65,11 +74,13 @@ class Avata
         }
 
         ksort($param);
+
         $hexHash = hash('sha256',
             stripcslashes(
                 json_encode($param, JSON_UNESCAPED_UNICODE) . $timestamp . $this->config->getApiSecret()
             )
         );
+
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Content-Type:application/json',
@@ -77,23 +88,40 @@ class Avata
             'X-Signature:' . $hexHash,
             'X-Timestamp:' . $timestamp,
         ]);
+
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
-        $data = curl_exec($ch);
+        $rawData = curl_exec($ch);
 
         $errInfo = curl_error($ch);
         if($errInfo !== ''){
             throw new AvataException('avata curl error:' . $errInfo);
         }
+
+
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        $data = json_decode($data, true);
-        return $data;
+
+        $response = new Response();
+        $response->setHttpCode($httpCode);
+        $response->setRaw($rawData);
+
+        $data = json_decode($rawData, true);
+        if(isset($data['data'])){
+            $response->setData($data['data']);
+        }
+        if(isset($data['error'])){
+            $response->setError($data['error']);
+            $response->setErrCode($data['error']['code'] ?? null);
+            $response->setErrSpace($data['error']['code_space'] ?? null);
+            $response->setErrMsg($data['error']['message'] ?? null);
+        }
+        return $response;
     }
 
     /**
-     * 毫秒级时间戳
+     * 时间戳
      * @return float
      */
     private function millisecond()

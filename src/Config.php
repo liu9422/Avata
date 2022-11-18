@@ -1,6 +1,10 @@
 <?php
 namespace Avata;
 
+/**
+ * Class Config
+ * @package Avata
+ */
 class Config
 {
     protected $apiKey;

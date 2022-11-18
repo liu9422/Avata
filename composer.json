@@ -1,0 +1,22 @@
+{
+    "name": "liu9422/avata",
+    "description": "Avata php client",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Avata\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "liu9422",
+            "email": "liuchengjun0940222@163.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=7.1.0",
+        "ext-curl": "*"
+    }
+}

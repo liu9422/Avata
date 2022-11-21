@@ -28,7 +28,7 @@ class Account extends Client
      * @return Response
      * @throws AvataException
      */
-    public function createChainAccount(string $name, string $operation_id)
+    public function createChainAccount(string $name, string $operation_id): Response
     {
         $body['name'] = $name;
         $body['operation_id'] = $this->getOperationId($operation_id);
@@ -42,7 +42,7 @@ class Account extends Client
      * @return Response
      * @throws AvataException
      */
-    public function batchCreateChainAccount(int $count, string $operation_id)
+    public function batchCreateChainAccount(int $count, string $operation_id): Response
     {
         $body['count'] = $count;
         $body['operation_id'] = $this->getOperationId($operation_id);
@@ -71,7 +71,7 @@ class Account extends Client
         string $sort_by = 'DATE_ASC',
         $offset = 0,
         $limit = 10
-    )
+    ): Response
     {
         $body = [];
         if($account !== ''){
@@ -135,7 +135,7 @@ class Account extends Client
         string $sort_by = 'DATE_ASC',
         $offset = 0,
         $limit = 10
-    )
+    ): Response
     {
         $body = [];
         $body['account'] = $account;

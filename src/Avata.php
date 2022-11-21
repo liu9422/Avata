@@ -1,11 +1,18 @@
 <?php
 namespace Avata;
 
+/**
+ * Class Avata
+ * @package Avata
+ */
 class Avata
 {
-
     protected $config;
 
+    /**
+     * Avata constructor.
+     * @param Config $config
+     */
     public function __construct(Config $config)
     {
         $this->config = $config;
@@ -18,7 +25,7 @@ class Avata
      * @return Response
      * @throws AvataException
      */
-    public function request(string $path, array $body = [], $method = 'GET')
+    public function request(string $path, array $body = [], $method = 'GET'): Response
     {
         $method = strtoupper($method);
         $url = rtrim($this->config->getDomain(), '/') . '/' . ltrim($path, '/');
@@ -29,48 +36,30 @@ class Avata
         switch ($method) {
             case 'GET':
                 $url .= $body ? '?' . http_build_query($body) : '';
-                if($body){
-                    foreach ($body as $key => $value) {
-                        $param['query_' . $key] = $value;
-                    }
-                }
+                $this->getParamByBody($param, $body, 'query');
                 break;
             case 'POST':
                 curl_setopt($ch, CURLOPT_POST, 1);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
-                if($body){
-                    foreach ($body as $key => $value) {
-                        $param['body_' . $key] = $value;
-                    }
-                }
+                $this->getParamByBody($param, $body);
                 break;
             case 'PATCH':
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
-                if($body){
-                    foreach ($body as $key => $value) {
-                        $param['body_' . $key] = $value;
-                    }
-                }
+                $this->getParamByBody($param, $body);
                 break;
             case 'PUT':
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
-                if($body){
-                    foreach ($body as $key => $value) {
-                        $param['body_' . $key] = $value;
-                    }
-                }
+                $this->getParamByBody($param, $body);
                 break;
             case 'DELETE':
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
-                if($body){
-                    foreach ($body as $key => $value) {
-                        $param['body_' . $key] = $value;
-                    }
-                }
+                $this->getParamByBody($param, $body);
                 break;
+            default:
+                throw new AvataException(sprintf('avata curl error:%s method is not allowed', $method));
         }
 
         ksort($param);
@@ -121,10 +110,24 @@ class Avata
     }
 
     /**
+     * @param $param
+     * @param array $body
+     * @param string $prefix
+     */
+    private function getParamByBody(&$param, array $body, $prefix = 'body')
+    {
+        if($body){
+            foreach ($body as $key => $value) {
+                $param[$prefix . '_' . $key] = $value;
+            }
+        }
+    }
+
+    /**
      * 时间戳
      * @return float
      */
-    private function millisecond()
+    private function millisecond(): float
     {
         list($t1, $t2) = explode(' ', microtime());
         return (float)sprintf('%.0f', (floatval($t1) + floatval($t2)));

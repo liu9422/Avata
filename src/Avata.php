@@ -9,13 +9,17 @@ class Avata
 {
     protected $config;
 
+    protected $requestDriver;
+
     /**
      * Avata constructor.
      * @param Config $config
+     * @param RequestDriverInterface|null $requestDriver
      */
-    public function __construct(Config $config)
+    public function __construct(Config $config, RequestDriverInterface $requestDriver = null)
     {
         $this->config = $config;
+        $this->requestDriver = is_null($requestDriver) ? new Request() : $requestDriver;
     }
 
     /**
@@ -27,35 +31,20 @@ class Avata
      */
     public function request(string $path, array $body = [], $method = 'GET'): Response
     {
-        $method = strtoupper($method);
+        $method = strtolower($method);
         $url = rtrim($this->config->getDomain(), '/') . '/' . ltrim($path, '/');
         $timestamp = $this->millisecond();
 
         $param['path_url'] = $path;
-        $ch = curl_init();
+
         switch ($method) {
-            case 'GET':
-                $url .= $body ? '?' . http_build_query($body) : '';
+            case 'get':
                 $this->getParamByBody($param, $body, 'query');
                 break;
-            case 'POST':
-                curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
-                $this->getParamByBody($param, $body);
-                break;
-            case 'PATCH':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
-                $this->getParamByBody($param, $body);
-                break;
-            case 'PUT':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
-                $this->getParamByBody($param, $body);
-                break;
-            case 'DELETE':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $body ? json_encode($body) : '');
+            case 'patch':
+            case 'put':
+            case 'delete':
+            case 'post':
                 $this->getParamByBody($param, $body);
                 break;
             default:
@@ -70,33 +59,15 @@ class Avata
             )
         );
 
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type:application/json',
-            'X-Api-Key:' . $this->config->getApiKey(),
-            'X-Signature:' . $hexHash,
-            'X-Timestamp:' . $timestamp,
-        ]);
+        $header['Content-Type'] = 'application/json';
+        $header['X-Api-Key'] = $this->config->getApiKey();
+        $header['X-Signature'] = $hexHash;
+        $header['X-Timestamp'] = $timestamp;
 
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        /* @var $response Response */
+        $response = $this->requestDriver->$method($url, $body, $header);
 
-        $rawData = curl_exec($ch);
-
-        $errInfo = curl_error($ch);
-        if($errInfo !== ''){
-            throw new AvataException('avata curl error:' . $errInfo);
-        }
-
-
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $response = new Response();
-        $response->setHttpCode($httpCode);
-        $response->setRaw($rawData);
-
-        $data = json_decode($rawData, true);
+        $data = json_decode($response->getRaw(), true);
         if(isset($data['data'])){
             $response->setData($data['data']);
         }

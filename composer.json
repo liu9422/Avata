@@ -1,6 +1,6 @@
 {
     "name": "liu9422/avata",
-    "description": "Avata php client",
+    "description": "avata的php客户端",
     "type": "library",
     "license": "MIT",
     "keywords": [
